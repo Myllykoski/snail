@@ -4,12 +4,19 @@
 \alias{fetch_forecast}
 \title{Get data}
 \usage{
-fetch_forecast(latitude, longitude)
+fetch_forecast(latitude, longitude, location = NULL)
 }
 \arguments{
-\item{latitude}{A numeric latitude in degrees}
+\item{latitude}{A numeric vector of latitudes in degrees.
+The length must be 1 or the same length as \code{longitude}.}
 
-\item{longitude}{A numeric longitude in degrees}
+\item{longitude}{A numeric vector of longitudes in degrees.
+The length must be 1 or the same length as \code{latitude}.}
+
+\item{location}{optional character string
+identifying the forecast location, e.g. a place name.
+If NULL, the default, latitude and longitude are used as name.
+the length must be the same length as \code{longitude} and \code{latitude}.}
 }
 \value{
 A data.table of met forecasts. See \code{\link[=variables]{variables()}}

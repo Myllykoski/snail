@@ -13,7 +13,10 @@ compact_glm(object)
 A list with formula, coefficients, terms, xlevels, contrasts, family and offset from the model.
 }
 \description{
-Get essential elements of a GLM object needed for predictions. See \code{\link[=predict_compact_glm]{predict_compact_glm()}}.
+Get essential elements of a GLM object needed for predictions.
 Data used for fitting is left out from the compact object
 thus saving space and making transfer of large objects faster.
+}
+\seealso{
+\code{\link[=predict_compact_glm]{predict_compact_glm()}}
 }

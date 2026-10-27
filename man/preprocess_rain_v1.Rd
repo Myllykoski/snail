@@ -15,3 +15,7 @@ A data.table
 \description{
 Prepare raw forecast data to be used in precipitation probability predictions.
 }
+\details{
+The columns in the \code{\link[=fetch_forecast]{fetch_forecast()}} output will be renamed to their abbreviations
+as defined in the \code{\link[=variables]{variables()}} table.
+}

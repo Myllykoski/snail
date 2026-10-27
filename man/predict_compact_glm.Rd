@@ -4,14 +4,14 @@
 \alias{predict_compact_glm}
 \title{Predict Compact GLM Fits}
 \usage{
-predict_compact_glm(object, newdata, type = c("response", "link"))
+predict_compact_glm(object, data, type = c("response", "link"))
 }
 \arguments{
 \item{object}{A list of elements of a fitted GLM object needed for predictions. See \code{\link[=compact_glm]{compact_glm()}}.}
 
-\item{newdata}{A data.frame in which to look for variables with which to predict.}
+\item{data}{A data.frame in which to look for variables with which to predict.}
 
-\item{type}{A character the type of prediction required.
+\item{type}{A character. The type of prediction required.
 The default type = "response" gives the predictions on the scale of the response variable;
 the alternative type = "link" is on the scale of the linear predictors.
 For a binomial model the "response" gives the predicted probabilities and

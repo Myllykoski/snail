@@ -4,30 +4,51 @@
 \alias{forecast}
 \title{Weather Forecast}
 \usage{
-forecast(latitude = NULL, longitude = NULL, data = NULL, name = "rain.p")
+forecast(
+  latitude = NULL,
+  longitude = NULL,
+  location = NULL,
+  data = NULL,
+  p_column = "rain.p"
+)
 }
 \arguments{
-\item{latitude}{A numeric latitude in degrees.}
+\item{latitude}{A numeric vector of latitudes in degrees.
+The length must be 1 or the same length as \code{longitude}.}
 
-\item{longitude}{A numeric longitude in degrees.}
+\item{longitude}{A numeric vector of longitudes in degrees.
+The length must be 1 or the same length as \code{latitude}.}
 
-\item{data}{A data.table of met forecasts.}
+\item{location}{optional character string
+identifying the forecast location, e.g. a place name.
+If NULL, the default, latitude and longitude are used as name.
+the length must be the same length as \code{longitude} and \code{latitude}.}
 
-\item{name}{A character name for rain probability column. Default 'rain.p'}
+\item{data}{optional data.table, see details. Output of \code{\link[=forecast]{forecast()}} or \code{\link[=fetch_forecast]{fetch_forecast()}}.}
+
+\item{p_column}{A character name for precipitation probability column.
+If NULL the probability is not computed. Default 'rain.p'.}
 }
 \value{
-A data.table. See \code{\link[=variables]{variables()}}
+A data.table. See \code{\link[=variables]{variables()}}.
+The hourly precipitation probability is predicted using \code{\link[=precipitation_pb_summary]{precipitation_pb_summary()}}.
 }
 \description{
-Pre-process weather variables and predict hourly rain probability.
+Pre-process weather variables and supplement
+forecast by predicted hourly precipitation probability.
 }
 \details{
-Either coordinates or data shall be given.
-The data is ignored if both coordinates are given.
-\code{\link[=fetch_forecast]{fetch_forecast()}} is used to get data when missing.
+Either coordinates or \code{data} must be supplied.
+Coordinates may be vectors of equal length.
+If both coordinates and \code{data} are supplied, \code{data} is ignored.
+\code{\link[=fetch_forecast]{fetch_forecast()}} is used to retrieve forecasts when coordinates
+are supplied.
 }
 \examples{
 forecast(64, 24) # Pikkupirtti.
 forecast(data = fetch_forecast(60.2665, 24.896)) # Kuninkaantammi.
 
+}
+\seealso{
+\code{\link[=fetch_forecast]{fetch_forecast()}}, \code{\link[=plot_forecast]{plot_forecast()}}
 }

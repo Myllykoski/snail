@@ -4,30 +4,66 @@
 \alias{plot_forecast}
 \title{Weather Forecast}
 \usage{
-plot_forecast(latitude = NULL, longitude = NULL, data = NULL, ...)
+plot_forecast(
+  latitude = NULL,
+  longitude = NULL,
+  location = NULL,
+  data = NULL,
+  format = "\%a \%d.\%m",
+  ...
+)
 }
 \arguments{
-\item{latitude}{A numeric latitude in degrees.}
+\item{latitude}{A numeric vector of latitudes in degrees.
+The length must be 1 or the same length as \code{longitude}.}
 
-\item{longitude}{A numeric longitude in degrees.}
+\item{longitude}{A numeric vector of longitudes in degrees.
+The length must be 1 or the same length as \code{latitude}.}
 
-\item{data}{A data.table of forecasts. The output of \code{\link[=forecast]{forecast()}} or \code{\link[=fetch_forecast]{fetch_forecast()}}.}
+\item{location}{optional character string
+identifying the forecast location, e.g. a place name.
+If NULL, the default, latitude and longitude are used as name.
+the length must be the same length as \code{longitude} and \code{latitude}.}
 
-\item{...}{other arguments passed on to \code{\link[ggplot2:labs]{labs()}} method.}
+\item{data}{optional data.table, see details. Output of \code{\link[=forecast]{forecast()}} or \code{\link[=fetch_forecast]{fetch_forecast()}}.}
+
+\item{format}{A string giving the formatting specification for the date labels.
+Codes are defined in \code{\link[=strftime]{strftime()}}.
+Default "\%a \%d.\%m" (weekday name, day of the month and month).}
+
+\item{...}{Other arguments passed to \code{\link[ggplot2:labs]{ggplot2::labs()}}.}
 }
 \value{
-A ggplot2 object.
+A ggplot2 object with \code{\link[=variables]{variables()}} vs. time plotted on panels and
+locations on colored lines.
 }
 \description{
-Plot weather forecast for next 10 days.
+Plot 10 day hourly weather forecasts for given locations.
 }
 \details{
-Either coordinates or data shall be given.
-The data is ignored if both coordinates are given.
-\code{\link[=fetch_forecast]{fetch_forecast()}} is used to get data when missing.
+Either coordinates or \code{data} must be supplied.
+Coordinates may be vectors of equal length.
+If both coordinates and \code{data} are supplied, \code{data} is ignored.
+\code{\link[=fetch_forecast]{fetch_forecast()}} is used to retrieve forecasts when coordinates
+are supplied.
 }
 \examples{
-plot_forecast(64, 24, title = "Pikkupirtti", subtitle = Sys.time())
-plot_forecast(data = fetch_forecast(60.2665, 24.896), title = "Kuninkaantammi")
+plot_forecast(64, 24,
+              title = "Pikkupirtti",
+              subtitle = as.character(Sys.time(), digits = 0)
+              )
 
+myfc <- fetch_forecast(60.2665, 24.896)
+plot_forecast(data = myfc, title = "Kuninkaantammi")
+
+plot_forecast(
+  latitude = c(69.043, 69.02),
+  longitude = c(20.857, 20.79),
+  location = c(1025, 472),
+  title = "Weather forecasts for Saanatunturi (elevation 1025 m) and Kilpisjärvi (472 m)"
+  )
+
+}
+\seealso{
+\code{\link[=fetch_forecast]{fetch_forecast()}}, \code{\link[=forecast]{forecast()}}
 }

@@ -69,13 +69,21 @@ rain_shrink <- function() {
 #'
 #' @param data A data.table as from [fetch_forecast()]
 #'
+#' @details
+#' The columns in the [fetch_forecast()] output will be renamed to their abbreviations
+#' as defined in the [variables()] table.
+#'
 #' @returns A data.table
 #'
 #' @export
 preprocess_rain_v1 <- function(data){
   dt0 <- copy(data)[, advance := as.numeric(time - updated_at, unit = "hours")]
 
-  setnames(dt0, .variables$variable, .variables$abbreviation)
+  if(any(dt0$advance <= 0)) {
+    stop("`time` must be greater than `updated at`.")
+  }
+
+  setnames(dt0, .variables$variable, .variables$abbreviation, skip_absent = TRUE)
 
   dt <- dt0[
     , list(time,
@@ -94,19 +102,25 @@ preprocess_rain_v1 <- function(data){
             R06f.c = fifelse(R06f.m == 1, 0, R06f.c)
   )]
 
-  dt[]
+  # copy extra columns not present in .variables
+  add_cols <- setdiff(names(data), .variables$variable)
+  dt <- cbind(dt, data[, .SD, .SDcols = add_cols])
+
+  dt
 }
 
 #' Model Predictions
 #'
 #' @description
-#' Get essential elements of a GLM object needed for predictions. See [predict_compact_glm()].
+#' Get essential elements of a GLM object needed for predictions.
 #' Data used for fitting is left out from the compact object
 #' thus saving space and making transfer of large objects faster.
 #'
 #' @param object a fitted object of class inheriting from "glm".
 #'
 #' @returns A list with formula, coefficients, terms, xlevels, contrasts, family and offset from the model.
+#'
+#' @seealso [predict_compact_glm()]
 #'
 #' @export
 compact_glm <- function(object) {
@@ -130,8 +144,8 @@ compact_glm <- function(object) {
 #' Obtains predictions from a fitted compact generalized linear model object.
 #'
 #' @param object A list of elements of a fitted GLM object needed for predictions. See [compact_glm()].
-#' @param newdata A data.frame in which to look for variables with which to predict.
-#' @param type A character the type of prediction required.
+#' @param data A data.frame in which to look for variables with which to predict.
+#' @param type A character. The type of prediction required.
 #' The default type = "response" gives the predictions on the scale of the response variable;
 #' the alternative type = "link" is on the scale of the linear predictors.
 #' For a binomial model the "response" gives the predicted probabilities and
@@ -142,13 +156,13 @@ compact_glm <- function(object) {
 #' @seealso [predict.glm()]
 #'
 #' @export
-predict_compact_glm <- function(object, newdata,
+predict_compact_glm <- function(object, data,
                                 type = c("response", "link")) {
   type <- match.arg(type)
 
   X <- stats::model.matrix(
     object$terms,
-    data = newdata,
+    data = data,
     contrasts.arg = object$contrasts,
     xlev = object$xlevels
   )
@@ -177,59 +191,139 @@ predict_compact_glm <- function(object, newdata,
 #' Weather Forecast
 #'
 #' @description
-#' Pre-process weather variables and predict hourly rain probability.
+#' Pre-process weather variables and supplement
+#' forecast by predicted hourly precipitation probability.
 #'
-#' @param latitude A numeric latitude in degrees.
-#' @param longitude A numeric longitude in degrees.
-#' @param data A data.table of met forecasts.
-#' @param name A character name for rain probability column. Default 'rain.p'
+#' @inheritParams fetch_forecast
 #'
-#' @returns A data.table. See [variables()]
+#' @param data optional data.table, see details. Output of [forecast()] or [fetch_forecast()].
+#' @param p_column A character name for precipitation probability column.
+#' If NULL the probability is not computed. Default 'rain.p'.
 #'
 #' @details
-#' Either coordinates or data shall be given.
-#' The data is ignored if both coordinates are given.
-#' [fetch_forecast()] is used to get data when missing.
+#' Either coordinates or `data` must be supplied.
+#' Coordinates may be vectors of equal length.
+#' If both coordinates and `data` are supplied, `data` is ignored.
+#' [fetch_forecast()] is used to retrieve forecasts when coordinates
+#' are supplied.
+#'
+#' @returns A data.table. See [variables()].
+#' The hourly precipitation probability is predicted using [precipitation_pb_summary()].
+#'
+#' @seealso [fetch_forecast()], [plot_forecast()]
 #'
 #' @examples
 #' forecast(64, 24) # Pikkupirtti.
 #' forecast(data = fetch_forecast(60.2665, 24.896)) # Kuninkaantammi.
 #'
 #' @export
-forecast <- function(latitude = NULL, longitude = NULL, data = NULL, name = "rain.p") {
-  if(!(is.null(latitude) || is.null(longitude))) {
-    data <- fetch_forecast(latitude, longitude)
+forecast <- function(latitude = NULL, longitude = NULL, location = NULL, data = NULL, p_column = "rain.p") {
+
+  if (!is.null(latitude) || !is.null(longitude)) {
+    data <- fetch_forecast(latitude = latitude, longitude = longitude, location = location)
   } else if (is.null(data)) {
-    stop("Coordinates and data are missing.")
+    stop("Supply coordinates or data.")
   }
 
   x <- (stats::formula(.rain) |> all.vars())[-1]
-  if(all(x %in% names(dt))){
+  if(all(x %in% names(data))){
     dt <- copy(data)
   } else {
     dt <- preprocess_rain_v1(data)
   }
 
-  if(!name %in% names(dt)){
-    dt[, .p. := predict_compact_glm(.rain, newdata = dt, type = "response")]
-    setnames(dt, ".p.", name)
+  # compute probability only when p_column is missing and not NULL
+  if(!is.null(p_column)){
+    if(!p_column %in% names(dt)){
+      dt[, .p. := predict_compact_glm(.rain, data = dt, type = "response")]
+      setnames(dt, ".p.", p_column)
+    }
+
+    setattr(dt, "p_column", p_column)
   }
 
   dt[]
 }
 
-#' Rain Probability
+#' Weather Forecast
 #'
 #' @description
-#' Show rain probability model version and training data details.
+#' Predict hourly precipitation probability.
 #'
-#' @returns A data.table
+#' @param data A data.table, output of [forecast()] or [fetch_forecast()].
+#' @inheritParams predict_compact_glm type
+#'
+#' @returns A numeric vector of precipitation probabilities.
 #'
 #' @examples
-#' rain_version()
+#' myfc <- fetch_forecast(latitude = 60.2665, longitude = 24.896, location = "Kuninkaantammi")
+#' precipitation_pb(myfc, type = "link")
 #'
 #' @export
-rain_version <- function(){
-  cbind(`rain model version` = .rain_version,
-        .data_summary)
+precipitation_pb <- function(data,
+                             type = c("response", "link")) {
+
+  x <- (stats::formula(.rain) |> all.vars())[-1]
+  if(all(x %in% names(data))){
+    return(predict_compact_glm(.rain, data = data, type = type))
+  }
+
+  dt <- preprocess_rain_v1(data)
+  found <- x %in% names(dt)
+  if(all(found)) {
+    return(predict_compact_glm(.rain, data = dt, type = type))
+  }
+}
+
+#' Precipitation Probability
+#'
+#' @description
+#' Show summary of precipitation probability model and training data.
+#'
+#' @returns None (invisible NULL).
+#'
+#' @seealso [stations()]
+#'
+#' @examples
+#' precipitation_pb_summary()
+#'
+#' @export
+precipitation_pb_summary <- function(){
+  i <- sapply(all.vars(stats::terms(.rain)), function(x) {
+    i <- sapply(.variables$abbreviation, grepl, x = x) |> which()
+    ifelse(length(i), i, NA)
+  })
+  p <- .variables[i, variable] |> paste(collapse = ", ")
+  x <- paste("Predictors:", p)
+
+  cat(
+    paste("Precipitation model version:", .rain_version),
+    paste("Response: precipitation >", .threshold, "mm/hour"),
+
+    paste(strwrap(x, width = 50), collapse = "\n\t"),
+
+    paste("Begin data gathering:", lubridate::date(.data_summary$start)),
+    paste("End data gathering:", lubridate::date(.data_summary$stop)),
+    paste("Number of weather stations:", .data_summary$stations),
+    paste("Training data size:", .data_summary$rows, "rows"),
+
+    sep = "\n"
+  )
+}
+
+#' Precipitation Probability
+#'
+#' @description
+#' Show Finnish weather stations from which the training, testing and proofing observations are gathered.
+#'
+#' @returns A data.table with station fmisid, name and lat, lon coordinates.
+#'
+#' @seealso [precipitation_pb_summary()]
+#'
+#' @examples
+#' stations()
+#'
+#' @export
+stations <- function(){
+  return(.stations)
 }
