@@ -1,12 +1,12 @@
 Package: snail
 Title: Visualise Weather Forecast
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     person("Lassi", "Myllykoski", , "lassi.myllykoski@gmail.com", role = c("aut", "cre"))
 Description:
-  Fetch hourly weather forecast from Norwegian Meteorological Institute's database
-  and visualise essential weather properties like temperature, rain probability,
-  cloudiness and others in a ggplot.
+  Fetch weather forecast from Norwegian Meteorological Institute's database
+  and visualise essential weather properties like temperature,
+  precipitation probability, cloudiness and others in a ggplot.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
